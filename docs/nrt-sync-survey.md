@@ -1,6 +1,6 @@
 ---
-title: Keeping Access Curremt
-date: 2026-07-09 08:50ó
+title: Keeping Access Current
+date: 2026-07-09 08:50
 draft: 0.1.0
 author: Keith Hazelton, Claude Fable 5
 ---

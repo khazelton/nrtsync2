@@ -2,7 +2,7 @@
 title: Prelude to Near-real-time Sync Study
 date: 2026-07-09 09:18
 draft: 0.1.0
-author: Keith Hazelton, Claude Fable 5
+author: Keith Hazelton
 ---
 
 

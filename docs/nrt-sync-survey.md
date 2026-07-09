@@ -1,3 +1,10 @@
+---
+title: Keeping Access Curremt
+date: 2026-07-09 08:50ó
+draft: 0.1.0
+author: Keith Hazelton, Claude Fable 5
+---
+
 # Keeping Access Current
 
 **A Survey & Critical Review — moving access-relevant change from Systems of Record / ERPs into IAM/IGA and downstream systems, and where each approach quietly breaks.**

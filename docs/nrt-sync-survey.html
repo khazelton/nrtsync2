@@ -1,0 +1,645 @@
+<title>Keeping Access Current — NRT Sync from Systems of Record to IAM/IGA</title>
+<style>
+  :root {
+    --bg: #e9edf0;
+    --surface: #f8fafb;
+    --surface-2: #ffffff;
+    --ink: #171c22;
+    --muted: #55616d;
+    --faint: #8a95a0;
+    --line: #d4dce2;
+    --line-strong: #b9c4cc;
+    --accent: #b0510a;
+    --accent-ink: #8f4008;
+    --accent-soft: rgba(176,81,10,.10);
+    --good: #2f6f4f;
+    --good-soft: rgba(47,111,79,.12);
+    --warn: #9a6c15;
+    --warn-soft: rgba(154,108,21,.14);
+    --crit: #a83a3a;
+    --crit-soft: rgba(168,58,58,.12);
+
+    --serif: "Charter","Bitstream Charter","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, "Cascadia Code", Consolas, monospace;
+
+    --measure: 40rem;
+    --wide: 62rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10151a;
+      --surface: #171d24;
+      --surface-2: #1c242c;
+      --ink: #e7ecf0;
+      --muted: #9caab5;
+      --faint: #6b7883;
+      --line: #29323b;
+      --line-strong: #3a4652;
+      --accent: #e08a3c;
+      --accent-ink: #eea560;
+      --accent-soft: rgba(224,138,60,.14);
+      --good: #5ea883;
+      --good-soft: rgba(94,168,131,.16);
+      --warn: #d0a44a;
+      --warn-soft: rgba(208,164,74,.16);
+      --crit: #d97070;
+      --crit-soft: rgba(217,112,112,.16);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #e9edf0; --surface: #f8fafb; --surface-2: #ffffff;
+    --ink: #171c22; --muted: #55616d; --faint: #8a95a0;
+    --line: #d4dce2; --line-strong: #b9c4cc;
+    --accent: #b0510a; --accent-ink: #8f4008; --accent-soft: rgba(176,81,10,.10);
+    --good: #2f6f4f; --good-soft: rgba(47,111,79,.12);
+    --warn: #9a6c15; --warn-soft: rgba(154,108,21,.14);
+    --crit: #a83a3a; --crit-soft: rgba(168,58,58,.12);
+  }
+  :root[data-theme="dark"] {
+    --bg: #10151a; --surface: #171d24; --surface-2: #1c242c;
+    --ink: #e7ecf0; --muted: #9caab5; --faint: #6b7883;
+    --line: #29323b; --line-strong: #3a4652;
+    --accent: #e08a3c; --accent-ink: #eea560; --accent-soft: rgba(224,138,60,.14);
+    --good: #5ea883; --good-soft: rgba(94,168,131,.16);
+    --warn: #d0a44a; --warn-soft: rgba(208,164,74,.16);
+    --crit: #d97070; --crit-soft: rgba(217,112,112,.16);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--measure); margin: 0 auto; padding: 0 1.5rem; }
+  .bleed { max-width: var(--wide); margin: 0 auto; padding: 0 1.5rem; }
+
+  a { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+  a:hover { border-bottom-color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  /* ---- Hero ---- */
+  header.hero {
+    border-bottom: 1px solid var(--line);
+    background:
+      radial-gradient(120% 80% at 100% 0%, var(--accent-soft), transparent 60%),
+      var(--surface);
+  }
+  .hero-inner { padding: 4.5rem 0 3rem; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .74rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 0 0 1.4rem;
+    display: flex; gap: .8rem; align-items: center; flex-wrap: wrap;
+  }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(2rem, 5.4vw, 3.15rem);
+    line-height: 1.08;
+    letter-spacing: -.012em;
+    text-wrap: balance;
+    margin: 0 0 1.1rem;
+  }
+  .standfirst {
+    font-size: 1.16rem;
+    color: var(--muted);
+    max-width: 34rem;
+    margin: 0 0 2rem;
+    text-wrap: pretty;
+  }
+  .thesis {
+    border-left: 3px solid var(--accent);
+    padding: .2rem 0 .2rem 1.1rem;
+    font-family: var(--serif);
+    font-size: 1.12rem;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 1.6rem;
+    margin-top: 2.4rem; padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: .76rem; color: var(--faint);
+    letter-spacing: .04em;
+  }
+  .meta-row b { color: var(--muted); font-weight: 500; }
+
+  /* ---- Sections ---- */
+  section { padding: 3.2rem 0; }
+  .section-label {
+    font-family: var(--mono);
+    font-size: .74rem; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--faint);
+    margin: 0 0 .5rem;
+  }
+  h2 {
+    font-family: var(--serif); font-weight: 600;
+    font-size: clamp(1.5rem, 3.4vw, 2rem);
+    letter-spacing: -.01em; line-height: 1.15;
+    margin: 0 0 1rem; text-wrap: balance;
+  }
+  h3 { font-family: var(--serif); font-weight: 600; font-size: 1.28rem; margin: 0; letter-spacing: -.005em; }
+  p { margin: 0 0 1.05rem; }
+  p.lead { font-size: 1.08rem; color: var(--muted); }
+  strong { font-weight: 640; }
+
+  .rule { height: 1px; background: var(--line); border: 0; margin: 0; }
+
+  /* ---- Evaluation lens ---- */
+  .lens-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1px; background: var(--line);
+    border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+    margin-top: 1.6rem;
+  }
+  .lens-cell { background: var(--surface); padding: 1.1rem 1.15rem; }
+  .lens-cell .k { font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; color: var(--accent-ink); text-transform: uppercase; margin-bottom: .35rem; }
+  .lens-cell .v { font-size: .93rem; color: var(--muted); line-height: 1.45; }
+
+  /* ---- Spectrum diagram ---- */
+  .spectrum {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 1.8rem 1.6rem 1.4rem; margin-top: 1.6rem;
+  }
+  .spectrum-axis { display: flex; justify-content: space-between; font-family: var(--mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin-bottom: .5rem; }
+  .spectrum-track { position: relative; height: 2px; background: linear-gradient(90deg, var(--line-strong), var(--accent)); border-radius: 2px; margin: 2.6rem 0 .4rem; }
+  .spectrum-ticks { display: grid; grid-template-columns: repeat(7, 1fr); gap: .4rem; }
+  .tick { text-align: center; position: relative; }
+  .tick::before { content: ""; position: absolute; top: -1.7rem; left: 50%; transform: translateX(-50%); width: 9px; height: 9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); }
+  .tick .n { font-family: var(--mono); font-size: .7rem; color: var(--accent-ink); display: block; }
+  .tick .t { font-size: .74rem; color: var(--muted); line-height: 1.25; display: block; margin-top: .15rem; }
+
+  /* ---- Approach cards ---- */
+  .approach { border-top: 1px solid var(--line); padding-top: 2rem; margin-top: 2.4rem; }
+  .approach:first-of-type { border-top: 0; margin-top: 1.4rem; padding-top: 0; }
+  .approach-head { display: flex; gap: 1rem; align-items: baseline; margin-bottom: 1rem; }
+  .approach-num {
+    font-family: var(--mono); font-size: .82rem; font-weight: 600;
+    color: var(--accent); background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-radius: 6px; padding: .18rem .5rem; flex: none; letter-spacing: .02em;
+  }
+  .family { font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); margin-top: .3rem; }
+
+  .spec { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1.1rem; }
+  .chip {
+    font-family: var(--mono); font-size: .74rem; line-height: 1.3;
+    padding: .32rem .6rem; border-radius: 6px;
+    background: var(--surface); border: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+  .chip .lbl { color: var(--faint); }
+
+  .verdict {
+    display: flex; gap: .55rem; align-items: baseline;
+    font-size: .92rem; margin-top: .3rem;
+    padding: .7rem .9rem; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .verdict .tag { font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; flex: none; padding-top: .1rem; }
+  .verdict.best { background: var(--good-soft); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+  .verdict.best .tag { color: var(--good); }
+  .verdict.watch { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+  .verdict.watch .tag { color: var(--warn); }
+
+  .starred { position: relative; }
+  .star-badge {
+    display: inline-block; font-family: var(--mono); font-size: .64rem;
+    text-transform: uppercase; letter-spacing: .1em; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 5px; padding: .12rem .4rem;
+    margin-left: .1rem; vertical-align: middle;
+  }
+
+  /* ---- Matrix ---- */
+  .matrix-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin-top: 1.6rem; -webkit-overflow-scrolling: touch; }
+  table { border-collapse: collapse; width: 100%; min-width: 54rem; font-size: .86rem; }
+  thead th {
+    text-align: left; font-family: var(--mono); font-weight: 600;
+    font-size: .68rem; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--faint); padding: .85rem .9rem; background: var(--surface-2);
+    border-bottom: 1px solid var(--line-strong); position: sticky; top: 0;
+    white-space: nowrap;
+  }
+  tbody td { padding: .8rem .9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:nth-child(odd) td { background: var(--surface); }
+  td.name { font-weight: 600; color: var(--ink); min-width: 12rem; }
+  td.name span { display: block; font-family: var(--mono); font-weight: 400; font-size: .68rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; margin-top: .15rem; }
+  .rate { font-family: var(--mono); font-size: .72rem; font-weight: 600; padding: .16rem .45rem; border-radius: 5px; white-space: nowrap; }
+  .r-good { color: var(--good); background: var(--good-soft); }
+  .r-warn { color: var(--warn); background: var(--warn-soft); }
+  .r-crit { color: var(--crit); background: var(--crit-soft); }
+  .cell-note { color: var(--muted); font-size: .82rem; }
+
+  /* ---- Synthesis callouts ---- */
+  .callout { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 1.2rem 1.3rem; margin: 1.5rem 0; }
+  .callout h4 { font-family: var(--sans); font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent-ink); margin: 0 0 .5rem; }
+  .callout p:last-child { margin-bottom: 0; }
+  .layer-list { list-style: none; padding: 0; margin: 1.4rem 0; display: grid; gap: .7rem; }
+  .layer-list li { display: flex; gap: .9rem; align-items: flex-start; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .9rem 1rem; }
+  .layer-list .lnum { font-family: var(--mono); font-size: .8rem; color: var(--accent); flex: none; font-weight: 600; }
+  .layer-list .lbody { font-size: .95rem; }
+  .layer-list .lbody b { color: var(--ink); }
+
+  /* ---- Sources ---- */
+  .sources { background: var(--surface); border-top: 1px solid var(--line); }
+  .src-group { margin-bottom: 1.6rem; }
+  .src-group h4 { font-family: var(--mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent-ink); margin: 0 0 .6rem; }
+  .src-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .45rem; }
+  .src-list li { font-size: .87rem; color: var(--muted); line-height: 1.4; padding-left: 1.1rem; position: relative; }
+  .src-list li::before { content: "▸"; position: absolute; left: 0; color: var(--faint); font-size: .7rem; top: .28rem; }
+  .src-list a { color: var(--ink); }
+  .disclaimer { font-size: .8rem; color: var(--faint); font-style: italic; margin-top: 1.4rem; }
+
+  footer { padding: 2.4rem 0 3.2rem; border-top: 1px solid var(--line); }
+  footer p { font-family: var(--mono); font-size: .72rem; color: var(--faint); letter-spacing: .03em; margin: 0; }
+
+  @media (max-width: 620px) {
+    body { font-size: 16px; }
+    .hero-inner { padding: 3.2rem 0 2.4rem; }
+    .spectrum-ticks .t { display: none; }
+    .approach-head { flex-wrap: wrap; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<header class="hero">
+  <div class="wrap hero-inner">
+    <p class="eyebrow"><span class="dot"></span> Survey &amp; Critical Review · Identity Data Plumbing</p>
+    <h1>Keeping Access Current</h1>
+    <p class="standfirst">How the industry moves access-relevant change from Systems of Record and ERPs into IAM/IGA and downstream systems — and where each approach quietly breaks.</p>
+    <p class="thesis">The real objective is not &ldquo;low latency&rdquo; in the abstract. It is minimizing the window of <em>decision-relevant staleness</em> — the interval in which an access decision could be made against data the System of Record has already superseded — <em>without</em> silently dropping or reordering the very changes that make the decision correct.</p>
+    <div class="meta-row">
+      <span><b>Scope</b> &nbsp;SoR/ERP → IAM/IGA sync</span>
+      <span><b>Approaches</b> &nbsp;7 architectural families</span>
+      <span><b>Lens</b> &nbsp;freshness × correctness × recoverability</span>
+      <span><b>Drafted</b> &nbsp;2026-07-09</span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <p class="section-label">Framing</p>
+    <h2>Why this is hard, restated</h2>
+    <p class="lead">Timely, accurate control over who can do what is the core promise of IAM and IGA. When a right to access depends on detailed, current data about a user, stale data produces two failures: a user is granted access they should no longer have, or denied access they now legitimately need.</p>
+    <p>These two failures are <strong>not symmetric</strong>. A late <em>grant</em> is a productivity annoyance; a late <em>revoke</em> — the leaver who keeps their entitlements, the transfer who retains the old team's data — is a standing security and compliance exposure. Any honest evaluation of a sync approach has to weigh how it behaves on the revoke path specifically, not just its average propagation time.</p>
+    <p>The prelude to this project observes that there seem to be as many sync approaches as there are systems, yet they sort into a manageable set of architectural categories. That is the organizing claim here: the seven families below are best read as points on a small number of axes — <strong>pull vs. push</strong>, <strong>batch vs. per-change</strong>, and, most decisively, <strong>who owns progress and who absorbs failure</strong>.</p>
+  </div>
+</section>
+
+<section style="padding-top:0;">
+  <div class="bleed">
+    <p class="section-label">The evaluation lens</p>
+    <h2 class="wrap" style="padding:0;">Eight dimensions that decide fitness</h2>
+    <div class="lens-grid">
+      <div class="lens-cell"><div class="k">Freshness</div><div class="v">Typical propagation delay from committed change to usable downstream state.</div></div>
+      <div class="lens-cell"><div class="k">Delivery guarantee</div><div class="v">Can a change be lost, duplicated, or delivered out of order?</div></div>
+      <div class="lens-cell"><div class="k">Recoverability</div><div class="v">If the consumer is down for an hour, does it catch up — or lose the gap?</div></div>
+      <div class="lens-cell"><div class="k">Coupling &amp; backpressure</div><div class="v">Who absorbs load when the far side is slow: source, broker, or sink?</div></div>
+      <div class="lens-cell"><div class="k">Source impact &amp; access</div><div class="v">API quotas, load, and whether you can even reach the change log.</div></div>
+      <div class="lens-cell"><div class="k">Semantic fidelity</div><div class="v">Multi-value attributes, custom fields, and — the perennial trap — deletes.</div></div>
+      <div class="lens-cell"><div class="k">Operational surface</div><div class="v">Infra to run, schema evolution, and the failure modes you now own.</div></div>
+      <div class="lens-cell"><div class="k">Governance fit</div><div class="v">Auditability, replay for evidence, and urgency of the revoke path.</div></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0;">
+  <div class="bleed">
+    <p class="section-label wrap" style="padding:0;">The map</p>
+    <h2 class="wrap" style="padding:0;">Seven families on one axis</h2>
+    <div class="spectrum">
+      <div class="spectrum-axis"><span>◄ Pull · batch · sink-driven</span><span>Push · per-change · source-driven ►</span></div>
+      <div class="spectrum-track"></div>
+      <div class="spectrum-ticks">
+        <div class="tick"><span class="n">01</span><span class="t">Full reconciliation</span></div>
+        <div class="tick"><span class="n">02</span><span class="t">Delta polling</span></div>
+        <div class="tick"><span class="n">06</span><span class="t">Sink-polled WAL</span></div>
+        <div class="tick"><span class="n">03</span><span class="t">SCIM push</span></div>
+        <div class="tick"><span class="n">05</span><span class="t">Streaming CDC</span></div>
+        <div class="tick"><span class="n">04</span><span class="t">Webhooks</span></div>
+        <div class="tick"><span class="n">07</span><span class="t">Shared signals</span></div>
+      </div>
+    </div>
+    <p class="wrap" style="padding:1.2rem 1.5rem 0; color:var(--muted); font-size:.92rem;">Ordering is by control model, not maturity. Note that the sink-polled write-ahead-log approach (06) sits on the <em>pull</em> side yet delivers per-change freshness — it is the anomaly that most of this review turns on.</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section>
+  <div class="wrap">
+    <p class="section-label">The approaches</p>
+    <h2>Survey &amp; critique, family by family</h2>
+
+    <!-- 1 -->
+    <div class="approach">
+      <div class="approach-head">
+        <span class="approach-num">01</span>
+        <div><h3>Scheduled full reconciliation</h3><div class="family">Pull · Batch · Whole-dataset compare</div></div>
+      </div>
+      <div class="spec">
+        <span class="chip"><span class="lbl">freshness</span> <b>hours–days</b></span>
+        <span class="chip"><span class="lbl">guarantee</span> <b>eventually correct</b></span>
+        <span class="chip"><span class="lbl">fails when</span> <b>you need speed</b></span>
+      </div>
+      <p>The baseline every mature deployment still runs: periodically pull the <em>entire</em> population from the source and diff it against the target. Okta's Workday connector, for instance, recommends a <strong>full import weekly</strong> precisely to reconcile all users and heal any drift the faster paths missed (<a href="https://help.okta.com/en-us/content/topics/provisioning/workday/best-practices.htm" target="_blank" rel="noopener">Okta, Workday best practices</a>).</p>
+      <p>Its weakness is exactly its freshness — a full compare is expensive, so it runs rarely. But its strength is underrated: because it observes ground truth in full, it is the only family that can detect <em>deletes and missed events by absence</em>. That is why it never fully disappears; it degrades into a correctness backstop rather than a primary path.</p>
+      <div class="verdict best"><span class="tag">Keep as</span><span>The audit floor. No per-change scheme is trustworthy without a periodic full reconcile behind it.</span></div>
+    </div>
+
+    <!-- 2 -->
+    <div class="approach">
+      <div class="approach-head">
+        <span class="approach-num">02</span>
+        <div><h3>Incremental / delta polling</h3><div class="family">Pull · Per-interval · &ldquo;changed since T&rdquo;</div></div>
+      </div>
+      <div class="spec">
+        <span class="chip"><span class="lbl">freshness</span> <b>= poll interval</b></span>
+        <span class="chip"><span class="lbl">guarantee</span> <b>window-dependent</b></span>
+        <span class="chip"><span class="lbl">fails when</span> <b>clocks &amp; deletes</b></span>
+      </div>
+      <p>The pragmatic default: ask the source for records changed since the last high-water timestamp. Okta runs <strong>incremental imports as often as hourly</strong> for exactly this (<a href="https://help.okta.com/en-us/content/topics/provisioning/workday/workday-provisioning.htm" target="_blank" rel="noopener">Okta Workday provisioning</a>); for HR sources without richer interfaces, corma.io notes platforms simply &ldquo;periodically check the HR system through REST APIs for new or updated records&rdquo; (<a href="https://www.corma.io/blog/best-practices-for-provisioning-in-identity-and-access-management-with-examples" target="_blank" rel="noopener">corma.io</a>).</p>
+      <p>Freshness is bounded cleanly by the interval, and it needs no infrastructure beyond a cron and a cursor. The traps are subtle: changes that land <em>during</em> a poll can slip a window if the cursor is advanced naively; server/client <strong>clock skew</strong> silently drops rows; and a plain &ldquo;what changed&rdquo; query usually <strong>cannot see hard deletes</strong> — a deleted row simply isn't in the result set, so a leaver can survive indefinitely until a full reconcile (01) catches them.</p>
+      <div class="verdict watch"><span class="tag">Watch</span><span>Tune the interval down and you approach real-time — but you also multiply source load, and you never fix the delete-detection gap.</span></div>
+    </div>
+
+    <!-- 3 -->
+    <div class="approach">
+      <div class="approach-head">
+        <span class="approach-num">03</span>
+        <div><h3>Standards-based push provisioning (SCIM)</h3><div class="family">Push · Per-change intent · Connector protocol</div></div>
+      </div>
+      <div class="spec">
+        <span class="chip"><span class="lbl">freshness</span> <b>often 20–40 min</b></span>
+        <span class="chip"><span class="lbl">guarantee</span> <b>best-effort</b></span>
+        <span class="chip"><span class="lbl">fails when</span> <b>rich attributes</b></span>
+      </div>
+      <p>SCIM is the lingua franca of provisioning: the IdP <em>pushes</em> user create/update/deactivate to downstream apps over a standard REST schema. Conceptually per-change and near-real-time — but real deployments disappoint. Reports put common SCIM sync cadence at <strong>every 20–40 minutes rather than truly live</strong> (<a href="https://www.stitchflow.com/scim/aws" target="_blank" rel="noopener">Stitchflow, AWS SCIM</a>), and the data model bites: many implementations support <strong>only single-value attributes, with no custom fields</strong> — awkward for roles, departments, or project assignments (<a href="https://www.zluri.com/eye-on-identity/google-workspace-scim-provisioning-limitations" target="_blank" rel="noopener">Zluri</a>). Practitioners catalog a long tail of interop pain (<a href="https://github.com/Evolveum/docs/blob/master/iam/iga/identity-provisioning/scim-troubles.adoc" target="_blank" rel="noopener">Evolveum, &ldquo;SCIM troubles&rdquo;</a>).</p>
+      <p>The deeper critique: standardizing the <em>wire format</em> did not standardize the <em>delivery semantics</em>. SCIM says nothing binding about ordering, retry, or replay, so &ldquo;push&rdquo; in practice is still a connector on a timer. It is essential for interoperability and useless as a latency guarantee.</p>
+      <div class="verdict watch"><span class="tag">Reality</span><span>Excellent as a common target interface; do not mistake its per-change API shape for per-change freshness.</span></div>
+    </div>
+
+    <!-- 4 -->
+    <div class="approach">
+      <div class="approach-head">
+        <span class="approach-num">04</span>
+        <div><h3>Event-driven webhooks</h3><div class="family">Push · Per-change · Source-initiated HTTP</div></div>
+      </div>
+      <div class="spec">
+        <span class="chip"><span class="lbl">freshness</span> <b>seconds</b></span>
+        <span class="chip"><span class="lbl">guarantee</span> <b>at-least-once, unordered</b></span>
+        <span class="chip"><span class="lbl">fails when</span> <b>the sink is down</b></span>
+      </div>
+      <p>When the source supports it, a webhook fires the instant a record changes and the provisioning workflow starts &ldquo;almost instantly&rdquo; (<a href="https://www.corma.io/blog/best-practices-for-provisioning-in-identity-and-access-management-with-examples" target="_blank" rel="noopener">corma.io</a>). This is the freshest of the source-driven options and the one most people mean by &ldquo;real-time.&rdquo;</p>
+      <p>It also inherits every hazard of source-initiated push. The source must write its record <em>and</em> emit the event — the classic <strong>dual-write problem</strong>, where a crash between the two silently loses the event or announces state that never committed (<a href="https://dev.to/aloknecessary/event-driven-architecture-the-dual-write-problem-and-how-to-solve-it-5266" target="_blank" rel="noopener">dual-write problem</a>). Delivery is <strong>at-least-once and unordered</strong>, so consumers must be idempotent and tolerate reordering (<a href="https://www.cockroachlabs.com/blog/idempotency-and-ordering-in-event-driven-systems/" target="_blank" rel="noopener">Cockroach Labs</a>). Worst of all for correctness: if the sink is offline when the webhook fires, <strong>the event is gone</strong> — there is no cursor to resume from. Webhooks buy freshness by putting recovery entirely on the source's retry policy, which you rarely control.</p>
+      <div class="verdict watch"><span class="tag">Caveat</span><span>Fast and cheap, but the least recoverable. Never run webhooks without a reconcile (01/02) to catch what was dropped while you were down.</span></div>
+    </div>
+
+    <!-- 5 -->
+    <div class="approach">
+      <div class="approach-head">
+        <span class="approach-num">05</span>
+        <div><h3>Durable event streaming &amp; log-based CDC</h3><div class="family">Push · Per-change · Broker-mediated (Kafka/Debezium)</div></div>
+      </div>
+      <div class="spec">
+        <span class="chip"><span class="lbl">freshness</span> <b>ms–seconds</b></span>
+        <span class="chip"><span class="lbl">guarantee</span> <b>ordered, replayable, at-least-once</b></span>
+        <span class="chip"><span class="lbl">fails when</span> <b>you count the ops cost</b></span>
+      </div>
+      <p>Change Data Capture reads the database's own transaction log and emits every insert/update/delete as an event, typically onto a durable bus like Kafka via Debezium (<a href="https://www.confluent.io/learn/change-data-capture/" target="_blank" rel="noopener">Confluent, CDC</a>). Because it reads the commit log rather than polling tables, it is low-latency, low-impact on the OLTP source, and <strong>ordered by commit</strong> — with the broker's retention giving you <strong>replay</strong> for free. Pairing CDC with the transactional <a href="https://www.decodable.co/blog/revisiting-the-outbox-pattern" target="_blank" rel="noopener">outbox pattern</a> closes the dual-write gap that undoes webhooks.</p>
+      <p>The honest counterweight is operational gravity. You now run and secure a broker, connectors, schema registry, and serialization evolution; delivery is still <strong>at-least-once</strong>, so consumers must dedupe; and practitioners increasingly warn against reaching for this machinery when the change volume doesn't justify it (<a href="https://www.squer.io/blog/stop-overusing-the-outbox-pattern" target="_blank" rel="noopener">squer.io, &ldquo;stop overusing the outbox&rdquo;</a>). It is the strongest general answer and the heaviest — most identity estates don't have Workday-scale change volume to amortize it.</p>
+      <div class="verdict best"><span class="tag">Strong</span><span>The reference architecture when you own the source database and change volume is real. Overkill for a few thousand HR events a day.</span></div>
+    </div>
+
+    <!-- 6 -->
+    <div class="approach starred">
+      <div class="approach-head">
+        <span class="approach-num">06</span>
+        <div><h3>Sink-polled write-ahead log with watermark <span class="star-badge">★ focus</span></h3><div class="family">Pull · Per-change · Consumer-owned cursor</div></div>
+      </div>
+      <div class="spec">
+        <span class="chip"><span class="lbl">freshness</span> <b>seconds</b></span>
+        <span class="chip"><span class="lbl">guarantee</span> <b>ordered, no-loss, resumable</b></span>
+        <span class="chip"><span class="lbl">fails when</span> <b>you can't reach the WAL</b></span>
+      </div>
+      <p>Here the <strong>sink</strong> tails the source's write-ahead / commit log directly — Postgres WAL, MySQL binlog, DynamoDB streams — and <strong>persists its own watermark</strong> (an LSN, binlog position, or offset) marking exactly how far it has consumed (<a href="https://microservices.io/patterns/data/transaction-log-tailing.html" target="_blank" rel="noopener">microservices.io, transaction log tailing</a>). This is log-based CDC's engine, but with the control inverted: no broker sits in the middle, and progress is owned by the data's destination rather than its origin.</p>
+      <p>That inversion is the whole point, and it resolves the failure that dogs families 03–04. Because the watermark lives with the sink, <strong>the sink can go dark for an hour and resume from exactly where it stopped</strong> — the source did nothing special, buffered nothing, and lost nothing; the WAL is the buffer. You inherit log-order (correct ordering), no-loss delivery, and natural <strong>backpressure</strong>: a slow sink simply advances its cursor more slowly. The cost is <em>coupling</em> — the sink must understand the source's log format and schema, needs privileged log access, and must make the watermark durable and its own writes idempotent (log tailing is at-least-once, and the canonical warning is that it is &ldquo;tricky to avoid duplicate publishing&rdquo;). Bootstrapping a new sink also needs a consistent snapshot stitched to the live tail without gaps or dupes — the problem the DBLog <strong>watermark-based snapshotting</strong> algorithm exists to solve, now standard in Debezium and Flink CDC (<a href="https://medium.com/@sami.alashabi/unlocking-real-time-data-synchronisation-a-guide-to-change-data-capture-cdc-with-kafka-and-356c0ba083b7" target="_blank" rel="noopener">CDC watermarking guide</a>).</p>
+      <div class="verdict best"><span class="tag">Best tradeoff</span><span>The most robust freshness-with-correctness balance when you can get log access: per-change latency, log-order, and — uniquely among the fast paths — recovery that the <em>consumer</em> controls.</span></div>
+    </div>
+
+    <!-- 7 -->
+    <div class="approach">
+      <div class="approach-head">
+        <span class="approach-num">07</span>
+        <div><h3>Continuous shared signals (SSF / CAEP / SCIM Events)</h3><div class="family">Push · Per-event · Standardized security signals</div></div>
+      </div>
+      <div class="spec">
+        <span class="chip"><span class="lbl">freshness</span> <b>near-instant</b></span>
+        <span class="chip"><span class="lbl">guarantee</span> <b>signal, not bulk sync</b></span>
+        <span class="chip"><span class="lbl">fails when</span> <b>used as the whole pipe</b></span>
+      </div>
+      <p>The emerging standards layer. The OpenID Foundation's <strong>Shared Signals Framework</strong> carries security-relevant events between systems in real time using signed Security Event Tokens; <strong>CAEP</strong> profiles events like &ldquo;session revoked,&rdquo; &ldquo;credential change,&rdquo; or &ldquo;assurance-level change,&rdquo; while <strong>SCIM Events</strong> extend the same token format to lifecycle events like user creation, suspension, and deletion (<a href="https://openid.net/shared-signals-framework-the-blueprint-for-modern-iam-part-1-of-4/" target="_blank" rel="noopener">OpenID, SSF blueprint</a>; <a href="https://openid.net/juggling-with-fire-made-easier-provisioning-with-scim/" target="_blank" rel="noopener">OpenID, SCIM provisioning</a>).</p>
+      <p>Read correctly, this is not a competitor to families 01–06 but a <strong>dedicated fast lane for the asymmetric-risk events</strong> — the urgent revoke, the compromised credential — that shouldn't wait for the bulk sync cadence. Its limits are maturity and scope: interop is still stabilizing (<a href="https://sgnl.ai/whitepaper/caep-best-practices/" target="_blank" rel="noopener">SGNL, CAEP best practices</a>), and it is a thin signalling channel, not a mechanism for reconciling full population state. Use it to cut revoke latency to seconds; keep a real sync underneath it for everything else.</p>
+      <div class="verdict watch"><span class="tag">Emerging</span><span>Promising as a governance fast-path for high-urgency events. Not yet, and not designed to be, your primary provisioning pipe.</span></div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section>
+  <div class="bleed">
+    <p class="section-label wrap" style="padding:0;">At a glance</p>
+    <h2 class="wrap" style="padding:0;">Comparison matrix</h2>
+    <div class="matrix-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Family</th>
+            <th>Freshness</th>
+            <th>Delivery guarantee</th>
+            <th>Recovery if sink down</th>
+            <th>Owns progress</th>
+            <th>Ops surface</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name">01 Full reconciliation<span>pull · batch</span></td>
+            <td><span class="rate r-crit">hours–days</span></td>
+            <td class="cell-note">Correct by construction; sees deletes</td>
+            <td class="cell-note">N/A — self-healing on next run</td>
+            <td class="cell-note">Sink (cursor-free)</td>
+            <td><span class="rate r-good">minimal</span></td>
+          </tr>
+          <tr>
+            <td class="name">02 Delta polling<span>pull · interval</span></td>
+            <td><span class="rate r-warn">= interval</span></td>
+            <td class="cell-note">Window-bounded; misses hard deletes</td>
+            <td class="cell-note">Good — resumes from cursor</td>
+            <td class="cell-note">Sink (timestamp)</td>
+            <td><span class="rate r-good">low</span></td>
+          </tr>
+          <tr>
+            <td class="name">03 SCIM push<span>push · connector</span></td>
+            <td><span class="rate r-warn">20–40 min</span></td>
+            <td class="cell-note">Best-effort; no ordering/replay spec</td>
+            <td class="cell-note">Depends on connector retry</td>
+            <td class="cell-note">Source/IdP</td>
+            <td><span class="rate r-warn">medium</span></td>
+          </tr>
+          <tr>
+            <td class="name">04 Webhooks<span>push · HTTP</span></td>
+            <td><span class="rate r-good">seconds</span></td>
+            <td class="cell-note">At-least-once, unordered, dual-write risk</td>
+            <td class="cell-note"><b>Poor — events lost while down</b></td>
+            <td class="cell-note">Source</td>
+            <td><span class="rate r-good">low</span></td>
+          </tr>
+          <tr>
+            <td class="name">05 Streaming CDC<span>push · broker</span></td>
+            <td><span class="rate r-good">ms–seconds</span></td>
+            <td class="cell-note">Ordered + replayable; at-least-once</td>
+            <td class="cell-note">Strong — broker retention</td>
+            <td class="cell-note">Broker (offsets)</td>
+            <td><span class="rate r-crit">high</span></td>
+          </tr>
+          <tr>
+            <td class="name">06 Sink-polled WAL ★<span>pull · consumer cursor</span></td>
+            <td><span class="rate r-good">seconds</span></td>
+            <td class="cell-note">Log-ordered, no-loss; at-least-once</td>
+            <td class="cell-note"><b>Strong — sink owns watermark</b></td>
+            <td class="cell-note">Sink (LSN/offset)</td>
+            <td><span class="rate r-warn">medium</span></td>
+          </tr>
+          <tr>
+            <td class="name">07 Shared signals<span>push · SET</span></td>
+            <td><span class="rate r-good">near-instant</span></td>
+            <td class="cell-note">Signalling only; not full-state sync</td>
+            <td class="cell-note">Varies (SSF stream)</td>
+            <td class="cell-note">Source/receiver</td>
+            <td><span class="rate r-warn">medium</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="wrap" style="padding:1.1rem 1.5rem 0; color:var(--muted); font-size:.9rem;">Ratings are directional, not benchmarks — real numbers depend on volume, source capabilities, and tuning. The one column that most separates the families in practice is <strong>&ldquo;recovery if sink down.&rdquo;</strong></p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section>
+  <div class="wrap">
+    <p class="section-label">Critical synthesis</p>
+    <h2>What the survey actually argues</h2>
+    <p class="lead">No single family wins outright, and the ones marketed hardest as &ldquo;real-time&rdquo; (webhooks, SCIM) are among the least trustworthy on the correctness axis. Three conclusions fall out of the comparison.</p>
+
+    <div class="callout">
+      <h4>1 · The deciding variable is who owns progress and who absorbs failure</h4>
+      <p>Source-driven push (webhooks) is fresh but fragile: it puts recovery on the source and loses events whenever the sink blinks. Broker-mediated streaming fixes this by making the broker own retention — at real operational cost. The <strong>sink-polled WAL with a consumer-owned watermark (06) is the quiet winner</strong>: it earns log-based CDC's ordering and no-loss guarantees while letting the destination control its own recovery, with no broker to run. When you can get log access, it is the best freshness-versus-correctness trade in the set — which is why it deserves first-class billing rather than being folded into &ldquo;CDC.&rdquo;</p>
+    </div>
+
+    <div class="callout">
+      <h4>2 · Every fast path is at-least-once and can drift — so reconciliation is not optional</h4>
+      <p>Webhooks, SCIM, streaming, and log tailing all deliver at-least-once and none reliably observe hard deletes on their own. That makes a periodic <strong>full reconciliation (01) a permanent structural requirement</strong>, not a legacy leftover: it is the only family that detects loss by absence. The mature pattern is layered, not singular.</p>
+    </div>
+
+    <div class="callout">
+      <h4>3 · Deprovisioning deserves its own fast lane</h4>
+      <p>Because a late revoke is a security hole while a late grant is an inconvenience, the urgent-revoke event is worth pulling out of the bulk cadence entirely. This is exactly the niche <strong>Shared Signals / CAEP (07)</strong> fills — seconds-latency signalling for &ldquo;session revoked&rdquo; and &ldquo;credential compromised&rdquo; — layered over a slower, more complete sync beneath.</p>
+    </div>
+
+    <h3 style="margin-top:2.4rem;">A defensible reference stack</h3>
+    <ul class="layer-list">
+      <li><span class="lnum">A</span><span class="lbody"><b>Fast path</b> — sink-polled WAL / watermarked log tailing (06) where you own the source DB; streaming CDC (05) only where change volume justifies a broker; webhooks (04) as a stopgap when the source is HTTP-only.</span></li>
+      <li><span class="lnum">B</span><span class="lbody"><b>Urgent-revoke lane</b> — Shared Signals / CAEP (07) for compromise and termination events that must not wait for the fast path's queue.</span></li>
+      <li><span class="lnum">C</span><span class="lbody"><b>Correctness backstop</b> — scheduled full reconciliation (01), with delta polling (02) as the fallback for sources that expose no log at all.</span></li>
+      <li><span class="lnum">D</span><span class="lbody"><b>Interop boundary</b> — SCIM (03) as the standard <em>target</em> interface to downstream apps, understood as a contract for shape, not a promise of speed.</span></li>
+    </ul>
+    <p>Read against the prelude's thesis, the categories do collapse onto a few axes — and the most useful axis turns out not to be pull-vs-push or batch-vs-streaming, but <strong>where the recovery cursor lives</strong>. Put it at the sink, and you get freshness you can actually trust.</p>
+  </div>
+</section>
+
+<section class="sources">
+  <div class="wrap">
+    <p class="section-label">Sources consulted</p>
+    <h2 style="margin-bottom:1.8rem;">References</h2>
+
+    <div class="src-group">
+      <h4>SCIM, provisioning &amp; polling cadence</h4>
+      <ul class="src-list">
+        <li><a href="https://www.stitchflow.com/scim/aws" target="_blank" rel="noopener">Stitchflow — AWS IAM Identity Center SCIM: pricing &amp; limitations</a> (20–40 min sync cadence)</li>
+        <li><a href="https://www.zluri.com/eye-on-identity/google-workspace-scim-provisioning-limitations" target="_blank" rel="noopener">Zluri — Google Workspace SCIM provisioning: limitations and alternatives</a> (single-value / custom-attribute limits)</li>
+        <li><a href="https://github.com/Evolveum/docs/blob/master/iam/iga/identity-provisioning/scim-troubles.adoc" target="_blank" rel="noopener">Evolveum Docs — &ldquo;SCIM troubles&rdquo;</a></li>
+      </ul>
+    </div>
+
+    <div class="src-group">
+      <h4>HR-driven &amp; event-driven provisioning</h4>
+      <ul class="src-list">
+        <li><a href="https://www.corma.io/blog/best-practices-for-provisioning-in-identity-and-access-management-with-examples" target="_blank" rel="noopener">corma.io — Best practices for IAM provisioning (2025)</a> (webhooks vs. periodic REST checks)</li>
+        <li><a href="https://www.idsalliance.org/blog/best-practices-to-ensure-successful-real-time-iga/" target="_blank" rel="noopener">Identity Defined Security Alliance — Best practices for real-time IGA</a></li>
+        <li><a href="https://community.sap.com/t5/enterprise-resource-planning-blog-posts-by-sap/sap-reference-architecture-for-iam-hr-driven-identity-lifecycle-management/ba-p/13534571" target="_blank" rel="noopener">SAP — Reference architecture for HR-driven identity lifecycle (Recruit-to-Retire)</a></li>
+      </ul>
+    </div>
+
+    <div class="src-group">
+      <h4>Connector reconciliation (Workday / Okta / SailPoint)</h4>
+      <ul class="src-list">
+        <li><a href="https://help.okta.com/en-us/content/topics/provisioning/workday/best-practices.htm" target="_blank" rel="noopener">Okta — Workday provisioning best practices &amp; FAQ</a> (full import weekly, incremental hourly, Real-Time Sync)</li>
+        <li><a href="https://help.okta.com/en-us/content/topics/provisioning/workday/workday-provisioning.htm" target="_blank" rel="noopener">Okta — Workday provisioning overview</a></li>
+      </ul>
+    </div>
+
+    <div class="src-group">
+      <h4>CDC, streaming &amp; log-based capture</h4>
+      <ul class="src-list">
+        <li><a href="https://www.confluent.io/learn/change-data-capture/" target="_blank" rel="noopener">Confluent — What is Change Data Capture?</a></li>
+        <li><a href="https://www.decodable.co/blog/revisiting-the-outbox-pattern" target="_blank" rel="noopener">Decodable — Revisiting the Outbox Pattern</a></li>
+        <li><a href="https://medium.com/@sami.alashabi/unlocking-real-time-data-synchronisation-a-guide-to-change-data-capture-cdc-with-kafka-and-356c0ba083b7" target="_blank" rel="noopener">Alashabi — CDC with Kafka &amp; Debezium; watermark-based snapshotting (DBLog)</a></li>
+      </ul>
+    </div>
+
+    <div class="src-group">
+      <h4>Transaction-log tailing, watermarks &amp; delivery semantics</h4>
+      <ul class="src-list">
+        <li><a href="https://microservices.io/patterns/data/transaction-log-tailing.html" target="_blank" rel="noopener">microservices.io — Pattern: Transaction log tailing</a> (WAL/binlog; &ldquo;tricky to avoid duplicate publishing&rdquo;)</li>
+        <li><a href="https://www.squer.io/blog/stop-overusing-the-outbox-pattern" target="_blank" rel="noopener">squer.io — Stop overusing the outbox pattern</a></li>
+        <li><a href="https://www.cockroachlabs.com/blog/idempotency-and-ordering-in-event-driven-systems/" target="_blank" rel="noopener">Cockroach Labs — Idempotency and ordering in event-driven systems</a></li>
+        <li><a href="https://dev.to/aloknecessary/event-driven-architecture-the-dual-write-problem-and-how-to-solve-it-5266" target="_blank" rel="noopener">Alok — Event-driven architecture: the dual-write problem</a></li>
+      </ul>
+    </div>
+
+    <div class="src-group">
+      <h4>Shared Signals / CAEP / SCIM Events</h4>
+      <ul class="src-list">
+        <li><a href="https://openid.net/shared-signals-framework-the-blueprint-for-modern-iam-part-1-of-4/" target="_blank" rel="noopener">OpenID Foundation — Shared Signals Framework: the blueprint for modern IAM (Pt. 1)</a></li>
+        <li><a href="https://openid.net/juggling-with-fire-made-easier-provisioning-with-scim/" target="_blank" rel="noopener">OpenID Foundation — Provisioning with SCIM &amp; SCIM Events</a></li>
+        <li><a href="https://sgnl.ai/whitepaper/caep-best-practices/" target="_blank" rel="noopener">SGNL — CAEP best practices</a></li>
+      </ul>
+    </div>
+
+    <p class="disclaimer">Sources were consulted via web search on 2026-07-09. Latency figures are vendor/practitioner estimates that vary widely with configuration and change volume; treat them as directional. Several cited pages are vendor or practitioner blogs and carry the usual commercial framing.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>nrtsync2 · Survey &amp; critical review · Draft 2026-07-09 · Reads best alongside memory/prelude.md</p>
+  </div>
+</footer>

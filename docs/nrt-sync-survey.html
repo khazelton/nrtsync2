@@ -222,6 +222,22 @@
     margin-left: .1rem; vertical-align: middle;
   }
 
+  /* ---- Tradeoff cards ---- */
+  .tradeoffs { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1rem; margin-top: 1.6rem; }
+  .tradeoff { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 1.15rem 1.2rem; display: flex; flex-direction: column; }
+  .tradeoff .lever { font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .09em; color: var(--faint); margin: 0 0 .35rem; }
+  .tradeoff h4 { font-family: var(--serif); font-size: 1.12rem; font-weight: 600; margin: 0 0 .7rem; letter-spacing: -.005em; }
+  .tension { font-size: .9rem; color: var(--muted); line-height: 1.5; margin: 0 0 .8rem; }
+  .tension b { color: var(--ink); font-weight: 620; }
+  .poles { display: flex; gap: .4rem; margin: 0 0 .85rem; font-family: var(--mono); font-size: .68rem; }
+  .pole { flex: 1; padding: .4rem .5rem; border-radius: 6px; line-height: 1.35; border: 1px solid var(--line); }
+  .pole .ph { display: block; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .2rem; font-size: .62rem; }
+  .pole.a { background: var(--crit-soft); } .pole.a .ph { color: var(--crit); }
+  .pole.b { background: var(--good-soft); } .pole.b .ph { color: var(--good); }
+  .tradeoff .default { margin-top: auto; padding-top: .7rem; border-top: 1px dashed var(--line-strong); font-size: .88rem; }
+  .tradeoff .default .dl { font-family: var(--mono); font-size: .64rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent-ink); display: block; margin-bottom: .2rem; }
+  .tradeoff .refs { font-family: var(--mono); font-size: .66rem; color: var(--faint); margin-top: .55rem; letter-spacing: .03em; }
+
   /* ---- Matrix ---- */
   .matrix-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin-top: 1.6rem; -webkit-overflow-scrolling: touch; }
   table { border-collapse: collapse; width: 100%; min-width: 54rem; font-size: .86rem; }
@@ -572,6 +588,97 @@
       <li><span class="lnum">D</span><span class="lbody"><b>Interop boundary</b> — SCIM (03) as the standard <em>target</em> interface to downstream apps, understood as a contract for shape, not a promise of speed.</span></li>
     </ul>
     <p>Read against the prelude's thesis, the categories do collapse onto a few axes — and the most useful axis turns out not to be pull-vs-push or batch-vs-streaming, but <strong>where the recovery cursor lives</strong>. Put it at the sink, and you get freshness you can actually trust.</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<section>
+  <div class="bleed">
+    <p class="section-label wrap" style="padding:0;">Building it</p>
+    <h2 class="wrap" style="padding:0;">Implementation tradeoffs</h2>
+    <p class="lead wrap" style="padding:0; max-width:40rem;">Choosing a family (01&ndash;07) settles the shape of the pipe. It does not settle the six engineering decisions below — and these are where a &ldquo;near-real-time&rdquo; design quietly turns lossy, out-of-order, or stale in production. Each is a genuine tension with a defensible default, not a solved problem.</p>
+    <div class="tradeoffs">
+
+      <div class="tradeoff">
+        <p class="lever">Lever · delivery semantics</p>
+        <h4>Exactly-once is a trap</h4>
+        <p class="tension">Every fast path here is <b>at-least-once</b>; true exactly-once delivery across a network boundary is effectively unachievable. Effort spent chasing it is better spent making re-delivery <b>harmless</b>.</p>
+        <div class="poles">
+          <div class="pole a"><span class="ph">Chase E-O-O</span>fragile, slow, still leaks dupes on failover</div>
+          <div class="pole b"><span class="ph">A-L-O + idempotent</span>upsert keyed by entity&nbsp;+&nbsp;version</div>
+        </div>
+        <div class="default"><span class="dl">Default</span>Assume duplicates. Make the sink idempotent — apply keyed on <span style="font-family:var(--mono);font-size:.85em">(entity_id, change_version)</span> so replays converge instead of corrupt.</div>
+        <p class="refs">bears on 04 · 05 · 06</p>
+      </div>
+
+      <div class="tradeoff">
+        <p class="lever">Lever · when to commit the cursor</p>
+        <h4>Watermark timing = loss vs. rework</h4>
+        <p class="tension">The order of &ldquo;apply change&rdquo; and &ldquo;advance watermark&rdquo; decides your failure mode. Commit the cursor <b>before</b> the write lands and a crash <b>loses</b> the change; commit <b>after</b> and a crash <b>reprocesses</b> it.</p>
+        <div class="poles">
+          <div class="pole a"><span class="ph">Commit early</span>gaps — silent data loss</div>
+          <div class="pole b"><span class="ph">Commit after apply</span>at-worst reprocessing</div>
+        </div>
+        <div class="default"><span class="dl">Default</span>Advance the watermark only after the apply is durable, and lean on the idempotency above so the reprocessing is a no-op. Never trade loss for a little less rework.</div>
+        <p class="refs">bears on 02 · 06</p>
+      </div>
+
+      <div class="tradeoff">
+        <p class="lever">Lever · ordering &amp; parallelism</p>
+        <h4>Order per entity, not globally</h4>
+        <p class="tension">Strict global ordering is correct but serial — it caps throughput at one worker. Full parallelism is fast but reorders events, so a stale &ldquo;disable&rdquo; can land <b>after</b> a newer &ldquo;enable&rdquo; and re-grant access.</p>
+        <div class="poles">
+          <div class="pole a"><span class="ph">Global order</span>correct, single-threaded, slow</div>
+          <div class="pole b"><span class="ph">Unordered</span>fast, races on the revoke path</div>
+        </div>
+        <div class="default"><span class="dl">Default</span>Partition by a stable key (the user/identity id): strict order <em>within</em> an identity, parallel <em>across</em> identities. Carry a version/LSN so the sink can drop out-of-order stragglers.</div>
+        <p class="refs">bears on 04 · 05 · 06</p>
+      </div>
+
+      <div class="tradeoff">
+        <p class="lever">Lever · initial load</p>
+        <h4>Bootstrapping without a gap</h4>
+        <p class="tension">A new sink must load a consistent snapshot <em>and</em> stitch it to the live tail with no missing or duplicated change in the seam. Lock the source and you block it; snapshot naively alongside the stream and you get gaps or dupes.</p>
+        <div class="poles">
+          <div class="pole a"><span class="ph">Lock &amp; dump</span>consistent but blocks the source</div>
+          <div class="pole b"><span class="ph">Naive concurrent</span>gaps/dupes at the seam</div>
+        </div>
+        <div class="default"><span class="dl">Default</span>Use <b>watermark-based snapshotting</b> (the DBLog algorithm in Debezium / Flink CDC): chunk the snapshot and interleave it with the live log, deduping by log precedence. Lock-free and seamless.</div>
+        <p class="refs">bears on 05 · 06</p>
+      </div>
+
+      <div class="tradeoff">
+        <p class="lever">Lever · deletes</p>
+        <h4>Deletes are the silent leak</h4>
+        <p class="tension">A &ldquo;what changed since T&rdquo; query cannot return a row that no longer exists, so <b>hard deletes are invisible</b> to most fast paths — exactly the leaver whose access must be revoked. Absence is not an event.</p>
+        <div class="poles">
+          <div class="pole a"><span class="ph">Trust the feed</span>misses hard deletes indefinitely</div>
+          <div class="pole b"><span class="ph">Reconcile by absence</span>catches them, but costly</div>
+        </div>
+        <div class="default"><span class="dl">Default</span>Prefer sources that emit tombstones / soft-delete events (log-based CDC does — 05/06). Where they don't, a periodic full reconciliation (01) is the <em>only</em> reliable delete detector — treat it as mandatory, not optional.</div>
+        <p class="refs">bears on 01 · 02 · 06</p>
+      </div>
+
+      <div class="tradeoff">
+        <p class="lever">Lever · freshness vs. cost</p>
+        <h4>Buy freshness, then measure it</h4>
+        <p class="tension">Freshness has a price paid in source load: tighter polling burns API quota and adds DB pressure; wider batching goes stale. And latency you don't measure will drift — a healthy-looking pipe can silently fall an hour behind.</p>
+        <div class="poles">
+          <div class="pole a"><span class="ph">Poll harder</span>fresh, but quota &amp; source strain</div>
+          <div class="pole b"><span class="ph">Batch wider</span>cheap, but stale decisions</div>
+        </div>
+        <div class="default"><span class="dl">Default</span>Get freshness from event/log capture (04&ndash;06), not from cranking the poll interval; reserve tight polling for HTTP-only sources. Set an explicit end-to-end <b>staleness SLO</b> and alarm on consumer lag — the freshness you can't see, you don't have.</div>
+        <p class="refs">bears on 02 · 04 · 06</p>
+      </div>
+
+    </div>
+    <div class="wrap" style="padding:1.6rem 1.5rem 0;">
+      <div class="callout">
+        <h4>The thread through all six</h4>
+        <p>Notice that five of the six defaults lean on the same two primitives: an <strong>idempotent, versioned apply</strong> at the sink and a <strong>durable watermark</strong> advanced after that apply. Get those right and the remaining decisions — ordering, bootstrap, deletes — become tuning rather than correctness risks. This is the concrete, code-level reason the survey keeps returning to the sink-owned cursor (06): it is where these primitives naturally live.</p>
+      </div>
+    </div>
   </div>
 </section>
 
